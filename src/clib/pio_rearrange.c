@@ -1176,7 +1176,7 @@ int box_rearrange_create(iosystem_desc_t *ios, int maplen, const PIO_Offset *com
     int nioprocs = ios->num_iotasks;
     PIO_Offset gstride[ndims];
     PIO_Offset start[ndims], count[ndims];
-    int  tsize, i, j, k;
+    int  tsize;
     int dest_ioproc[maplen];
     PIO_Offset dest_ioindex[maplen];
     int sndlths[nprocs];
@@ -1373,12 +1373,14 @@ int compare_offsets(const void *a, const void *b)
  * @param firstregion pointer to the first region.
  * @returns 0 on success, error code otherwise.
  */
-void get_start_and_count_regions(int ndims, const int *gdimlen, int maplen, const PIO_Offset *map,
-                                 int *maxregions, io_region *firstregion)
+int get_start_and_count_regions(int ndims, const int *gdimlen, int maplen,
+                                const PIO_Offset *map, int *maxregions,
+                                io_region *firstregion)
 {
     int nmaplen;
     int regionlen;
     io_region *region;
+    int ret;
 
     assert(maxregions);
     assert(firstregion);
@@ -1413,7 +1415,10 @@ void get_start_and_count_regions(int ndims, const int *gdimlen, int maplen, cons
 
         if (region->next == NULL && nmaplen < maplen)
         {
-            region->next = alloc_region(ndims);
+            /* Allocate space for a data region. */
+            if ((ret = alloc_region2(ndims, &region->next)))
+                return pio_err(NULL, NULL, ret, __FILE__, __LINE__);
+            
             /* The offset into the local array buffer is the sum of
              * the sizes of all of the previous regions (loffset) */
             region = region->next;
@@ -1426,6 +1431,8 @@ void get_start_and_count_regions(int ndims, const int *gdimlen, int maplen, cons
             (*maxregions)++;
         }
     }
+
+    return PIO_NOERR;
 }
 
 /**
@@ -1790,7 +1797,10 @@ int subset_rearrange_create(iosystem_desc_t *ios, int maplen, PIO_Offset *compma
         iodesc->maxfillregions = 0;
         if (myfillgrid)
         {
-            iodesc->fillregion = alloc_region(iodesc->ndims);
+            /* Allocate space for a data region. */
+            if ((ret = alloc_region2(iodesc->ndims, &iodesc->fillregion)))
+                return pio_err(ios, NULL, ret, __FILE__, __LINE__);
+
             get_start_and_count_regions(iodesc->ndims, gsize, iodesc->holegridsize, myfillgrid,
                                         &iodesc->maxfillregions, iodesc->fillregion);
             free(myfillgrid);
