@@ -120,11 +120,10 @@ int test_cmp_rearr_opts()
 /* Test some of the rearranger utility functions. */
 int test_rearranger_opts3()
 {
-    iosystem_desc_t my_ios;
-    iosystem_desc_t *ios = &my_ios;
+    rearr_opt_t ro;
 
     /* I'm not sure what the point of this function is... */
-    check_and_reset_rearr_opts(ios);
+    check_and_reset_rearr_opts(&ro);
     
     return 0;
 }
@@ -341,8 +340,8 @@ int test_compute_maxIObuffersize(MPI_Comm test_comm, int my_rank)
         int ndims = 1;
 
         /* This is how we allocate a region. */
-        ior1 = alloc_region(ndims);
-        ior1->next = NULL;
+        if ((ret = alloc_region2(ndims, &ior1)))
+            return ret;
         ior1->count[0] = 1;
         
         iodesc.firstregion = ior1;
@@ -355,10 +354,7 @@ int test_compute_maxIObuffersize(MPI_Comm test_comm, int my_rank)
             return ERR_WRONG;
         
         /* Free resources for the region. */
-        brel(ior1->start);
-        brel(ior1->count);
-        brel(ior1);
-
+        free_region2(ior1);
     }
 
     {
@@ -369,8 +365,8 @@ int test_compute_maxIObuffersize(MPI_Comm test_comm, int my_rank)
         int ndims = 2;
 
         /* This is how we allocate a region. */
-        ior2 = alloc_region(ndims);
-        ior2->next = NULL;
+        if ((ret = alloc_region2(ndims, &ior2)))
+            return ret;
         ior2->count[0] = 10;
         ior2->count[1] = 2;
         
@@ -384,10 +380,7 @@ int test_compute_maxIObuffersize(MPI_Comm test_comm, int my_rank)
             return ERR_WRONG;
         
         /* Free resources for the region. */
-        brel(ior2->start);
-        brel(ior2->count);
-        brel(ior2);
-
+        free_region2(ior2);
     }
 
     {
@@ -398,12 +391,13 @@ int test_compute_maxIObuffersize(MPI_Comm test_comm, int my_rank)
         int ndims = 2;
 
         /* This is how we allocate a region. */
-        ior4 = alloc_region(ndims);
-        ior4->next = NULL;
+        if ((ret = alloc_region2(ndims, &ior4)))
+            return ret;
         ior4->count[0] = 10;
         ior4->count[1] = 2;
 
-        ior3 = alloc_region(ndims);
+        if ((ret = alloc_region2(ndims, &ior3)))
+            return ret;
         ior3->next = ior4;
         ior3->count[0] = 100;
         ior3->count[1] = 5;
@@ -419,12 +413,8 @@ int test_compute_maxIObuffersize(MPI_Comm test_comm, int my_rank)
             return ERR_WRONG;
         
         /* Free resources for the region. */
-        brel(ior4->start);
-        brel(ior4->count);
-        brel(ior4);
-        brel(ior3->start);
-        brel(ior3->count);
-        brel(ior3);
+        free_region2(ior4);
+        free_region2(ior3);
     }
 
     return 0;

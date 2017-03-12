@@ -216,7 +216,13 @@ extern "C" {
 
     int flush_output_buffer(file_desc_t *file, bool force, PIO_Offset addsize);
     int compute_maxIObuffersize(MPI_Comm io_comm, io_desc_t *iodesc);
-    io_region *alloc_region(int ndims);
+
+    /* Allocate a data region. */
+    int alloc_region2(int ndims, io_region **region);
+
+    /* Free a data region. */
+    int free_region2(io_region *region);    
+
     int pio_delete_iosystem_from_list(int piosysid);
 
     /* Find greatest commond divisor. */

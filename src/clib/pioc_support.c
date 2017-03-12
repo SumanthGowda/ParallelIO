@@ -518,43 +518,44 @@ int pio_err(iosystem_desc_t *ios, file_desc_t *file, int err_num, const char *fn
 /**
  * Allocate an region.
  *
- * ndims the number of dimensions for the data in this region.
- * @returns a pointer to the newly allocated io_region struct.
+ * @param ndims the number of dimensions for the data in this region.
+ * @param a pointer to pointer to io_region that will get the newly
+ * allocated io_region struct.
+ * @returns 0 for succes, error code otherwise.
  */
-io_region *alloc_region(int ndims)
+int alloc_region2(int ndims, io_region **region)
 {
-    io_region *region;
+
+    /* Check inputs. */
+    pioassert(ndims >= 0 && region, "invalid input", __FILE__, __LINE__);
 
     /* Allocate memory for the io_region struct. */
-    if (!(region = bget(sizeof(io_region))))
-        return NULL;
-
+    if (!(*region = calloc(1, sizeof(io_region))))
+        return pio_err(NULL, NULL, PIO_ENOMEM, __FILE__, __LINE__);        
+        
     /* Allocate memory for the array of start indicies. */
-    if (!(region->start = bget(ndims * sizeof(PIO_Offset))))
-    {
-        brel(region);
-        return NULL;
-    }
+    if (!((*region)->start = calloc(ndims, sizeof(PIO_Offset))))
+        return pio_err(NULL, NULL, PIO_ENOMEM, __FILE__, __LINE__);        
 
     /* Allocate memory for the array of counts. */
-    if (!(region->count = bget(ndims * sizeof(PIO_Offset))))
-    {
-        brel(region);
-        brel(region->start);
-        return NULL;
-    }
+    if (!((*region)->count = calloc(ndims, sizeof(PIO_Offset))))
+        return pio_err(NULL, NULL, PIO_ENOMEM, __FILE__, __LINE__);        
 
-    region->loffset = 0;
-    region->next = NULL;
+    return PIO_NOERR;
+}
 
-    /* Initialize start and count arrays to zero. */
-    for (int i = 0; i < ndims; i++)
-    {
-        region->start[i] = 0;
-        region->count[i] = 0;
-    }
-
-    return region;
+/**
+ * Free a region. 
+ *
+ * @param region pointer to region to be freed.
+ * @returns 0 for success.
+ */
+int free_region2(io_region *region)
+{
+    free(region->start);
+    free(region->count);
+    free(region);
+    return PIO_NOERR;
 }
 
 /**
@@ -674,7 +675,8 @@ int malloc_iodesc(iosystem_desc_t *ios, int piotype, int ndims,
     (*iodesc)->maxregions = 1;
     (*iodesc)->ioid = -1;
     (*iodesc)->ndims = ndims;
-    (*iodesc)->firstregion = alloc_region(ndims);
+    if ((ret = alloc_region2(ndims, &(*iodesc)->firstregion)))
+        return pio_err(ios, NULL, ret, __FILE__, __LINE__);        
 
     /* Set the swap memory settings to defaults. */
     (*iodesc)->rearr_opts = ios->rearr_opts;
